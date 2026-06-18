@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ region.name }} &mdash; ДевПодросток{% endblock %}
+{% block nav_regions %}active{% endblock %}
+
+{% block content %}
+{# Breadcrumb #}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'region_list' %}">Регионы</a></li>
+    <li class="breadcrumb-item active">{{ region.name }}</li>
+  </ol>
+</nav>
+
+{# Заголовок #}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h2 class="h4 mb-1">{{ region.name }}</h2>
+    <span class="badge bg-secondary">{{ region.district.code }}</span>
+    <span class="text-muted small ms-1">{{ region.district.name }}</span>
+    <span class="text-muted small ms-3">
+      <i class="bi bi-calendar-range me-1"></i>{{ year_min }} – {{ year_max }}
+    </span>
+  </div>
+  {% if region.is_excluded %}
+    <span class="badge bg-warning text-dark">Исключён из анализа (СКФО)</span>
+  {% endif %}
+</div>
+
+{# Ключевые показатели последнего года #}
+{% if latest_obs %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-stat h-100 shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Доля преступлений, %</div>
+        <div class="h4 mb-0 text-danger">
+          {% if latest_obs.juvenile_crime_share is not None %}
+            {{ latest_obs.juvenile_crime_share|floatformat:3 }}
+          {% else %}—{% endif %}
+        </div>
+        <div class="text-muted" style="font-size:.75rem">несовершеннолетних, {{ latest_obs.year }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-stat h-100 shadow-sm" style="border-left-color:#fd7e14">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Бедность, %</div>
+        <div class="h4 mb-0 text-warning">
+          {% if latest_obs.poverty_rate is not None %}
+            {{ latest_obs.poverty_rate|floatformat:1 }}
+          {% else %}—{% endif %}
+        </div>
+        <div class="text-muted" style="font-size:.75rem">ниже прожит. минимума</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-stat h-100 shadow-sm" style="border-left-color:#0d6efd">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Безработица, %</div>
+        <div class="h4 mb-0 text-primary">
+          {% if latest_obs.unemployment_rate is not None %}
+            {{ latest_obs.unemployment_rate|floatformat:1 }}
+          {% else %}—{% endif %}
+        </div>
+        <div class="text-muted" style="font-size:.75rem">по методологии МОТ</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-stat h-100 shadow-sm" style="border-left-color:#198754">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Среднедушевой доход</div>
+        <div class="h4 mb-0 text-success">
+          {% if latest_obs.avg_income is not None %}
+            {{ latest_obs.avg_income|floatformat:0 }} ₽
+          {% else %}—{% endif %}
+        </div>
+        <div class="text-muted" style="font-size:.75rem">в месяц, {{ latest_obs.year }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Графики #}
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body p-2">
+        {{ chart_crime|safe }}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body p-2">
+        {{ chart_econ|safe }}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Полная таблица показателей #}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-light fw-semibold">Все показатели по годам</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered mb-0" style="font-size:.85rem">
+        <thead class="table-secondary">
+          <tr>
+            <th>Год</th>
+            <th>Дол. преступ., %</th>
+            <th>Бедность, %</th>
+            <th>Безраб., %</th>
+            <th>Доход, руб.</th>
+            <th>Урбанизация, %</th>
+            <th>Алкоголизм, на 100 тыс. нас.</th>
+            <th>Наркомания, на 100 тыс. нас.</th>
+            <th>Джини</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in observations %}
+          <tr>
+            <td><strong>{{ o.year }}</strong></td>
+            <td>{% if o.juvenile_crime_share is not None %}{{ o.juvenile_crime_share|floatformat:3 }}{% else %}—{% endif %}</td>
+            <td>{% if o.poverty_rate is not None %}{{ o.poverty_rate|floatformat:1 }}{% else %}—{% endif %}</td>
+            <td>{% if o.unemployment_rate is not None %}{{ o.unemployment_rate|floatformat:1 }}&nbsp;%{% else %}—{% endif %}</td>
+            <td>{% if o.avg_income is not None %}{{ o.avg_income|floatformat:0 }}{% else %}—{% endif %}</td>
+            <td>{% if o.urbanization is not None %}{{ o.urbanization|floatformat:1 }}&nbsp;%{% else %}—{% endif %}</td>
+            <td>{% if o.alcohol_per100k is not None %}{{ o.alcohol_per100k|floatformat:0 }}&nbsp;чел.{% else %}—{% endif %}</td>
+            <td>{% if o.narco_per100k is not None %}{{ o.narco_per100k|floatformat:0 }}&nbsp;чел.{% else %}—{% endif %}</td>
+            <td>{% if o.gini is not None %}{{ o.gini|floatformat:3 }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# LLM-чат #}
+<div class="card shadow-sm">
+  <div class="card-header bg-dark text-white fw-semibold">
+    <i class="bi bi-robot me-2"></i>Аналитический ассистент
+  </div>
+  <div class="card-body">
+    <p class="text-muted small mb-3">
+      Задайте вопрос о регионе или мерах профилактики — ассистент использует нормативные документы
+      и академический контекст.
+    </p>
+    <div id="llm-history" class="mb-3" style="max-height:360px; overflow-y:auto"></div>
+    <div class="input-group">
+      <textarea id="llm-question" class="form-control" rows="2"
+        placeholder="Например: Какие меры профилактики предусмотрены ФЗ-120 для регионов с высоким уровнем безработицы?"></textarea>
+      <button class="btn btn-dark" id="llm-send" type="button">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+    <div id="llm-spinner" class="mt-2 d-none">
+      <div class="spinner-border spinner-border-sm text-secondary me-2"></div>
+      <span class="text-muted small">Генерация ответа…</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const regionContext = `Регион: {{ region.name }}\nФО: {{ region.district.name }}\n{% if latest_obs %}Последний год: {{ latest_obs.year }}\nДоля преступлений: {% if latest_obs.juvenile_crime_share is not None %}{{ latest_obs.juvenile_crime_share|floatformat:3 }}%{% else %}н/д{% endif %}\nБедность: {% if latest_obs.poverty_rate is not None %}{{ latest_obs.poverty_rate|floatformat:1 }}%{% else %}н/д{% endif %}\nБезработица: {% if latest_obs.unemployment_rate is not None %}{{ latest_obs.unemployment_rate|floatformat:1 }}%{% else %}н/д{% endif %}{% endif %}`;
+
+  const history = document.getElementById("llm-history");
+  const questionEl = document.getElementById("llm-question");
+  const sendBtn = document.getElementById("llm-send");
+  const spinner = document.getElementById("llm-spinner");
+
+  function appendMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = "mb-3";
+    if (role === "user") {
+      div.innerHTML = `<div class="d-flex justify-content-end"><div class="bg-primary text-white rounded p-2 px-3" style="max-width:80%;white-space:pre-wrap">${escapeHtml(text)}</div></div>`;
+    } else {
+      div.innerHTML = `<div class="d-flex"><div class="bg-light border rounded p-2 px-3" style="max-width:90%;white-space:pre-wrap">${escapeHtml(text)}</div></div>`;
+    }
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  async function sendQuestion() {
+    const question = questionEl.value.trim();
+    if (!question) return;
+    appendMessage("user", question);
+    questionEl.value = "";
+    sendBtn.disabled = true;
+    spinner.classList.remove("d-none");
+
+    try {
+      const resp = await fetch("{% url 'llm_ask' %}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ question, context: regionContext }),
+      });
+      const data = await resp.json();
+      if (data.answer) {
+        appendMessage("assistant", data.answer);
+      } else {
+        appendMessage("assistant", "Ошибка: " + (data.error || "неизвестная ошибка"));
+      }
+    } catch (e) {
+      appendMessage("assistant", "Ошибка соединения: " + e.message);
+    } finally {
+      sendBtn.disabled = false;
+      spinner.classList.add("d-none");
+    }
+  }
+
+  sendBtn.addEventListener("click", sendQuestion);
+  questionEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendQuestion(); }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Аналитика &mdash; DevTeen{% endblock %}
+{% block nav_analytics %}active{% endblock %}
+
+{% block content %}
+<h2 class="h4 mb-4">
+  <i class="bi bi-bar-chart-line me-2 text-primary"></i>Аналитика и результаты исследования
+</h2>
+
+<ul class="nav nav-tabs mb-4" id="analyticsTab" role="tablist">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-eda">
+      <i class="bi bi-search me-1"></i>Разведочный анализ
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-panel">
+      <i class="bi bi-table me-1"></i>Панельная регрессия
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-forecast">
+      <i class="bi bi-graph-up-arrow me-1"></i>Прогноз 2024–2026
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <div class="tab-pane fade show active" id="tab-eda">
+    <div class="row g-4">
+      {% for filename, caption, description in eda_images %}
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <img src="{% static 'eda/'|add:filename %}" alt="{{ caption }}" class="card-img-top"
+               style="object-fit:contain;width:100%;background:#fff;padding:12px">
+          <div class="card-body pt-2 pb-1">
+            <h6 class="card-title mb-1 fw-semibold">{{ caption }}</h6>
+            <p class="card-text text-muted small mb-0">{{ description }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tab-panel">
+    {% if reg_headers %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header fw-semibold bg-light">Сводная таблица коэффициентов</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm mb-0" style="font-size:.85rem">
+            <thead class="table-secondary">
+              <tr>
+                {% for h in reg_headers %}<th>{{ h }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in reg_rows %}
+              <tr>
+                {% for cell in row %}<td class="text-center align-middle">{{ cell|safe }}</td>{% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4 border-0 bg-light">
+      <div class="card-body py-2 px-3" style="font-size:.82rem;color:#555">
+        <strong>Как читать таблицу.</strong>
+        В каждой ячейке указан коэффициент регрессии (жирным) и стандартная ошибка в скобках ниже.
+        Звёздочки — уровень статистической значимости:
+        <span class="text-danger fw-bold">***</span> p&lt;0.001 &nbsp;
+        <span class="text-warning fw-bold">**</span> p&lt;0.01 &nbsp;
+        <span class="text-info fw-bold">*</span> p&lt;0.05.
+        Зависимая переменная — <em>логарифм</em> доли подростковой преступности (log JCS).
+        <br>
+        <strong>Интерпретация коэффициентов:</strong>
+        для <em>Ln(доход)</em> — эластичность: рост дохода на 1% изменяет JCS на β%.
+        Для остальных переменных (бедность, безработица, урбанизация и др.) — полуэластичность:
+        рост показателя на 1 п.п. изменяет log(JCS) на β единиц, что приблизительно равно β·100% изменению JCS.
+        <br>
+        <strong>Pooled OLS</strong> — наивная регрессия без контроля региональных различий (смещённые оценки).
+        <strong>FE (One-Way)</strong> — фиксированные эффекты по регионам: каждый регион сравнивается сам с собой во времени, что устраняет влияние неизменных межрегиональных различий.
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+      {% for filename, caption in panel_images %}
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <img src="{% static 'panel/'|add:filename %}" alt="{{ caption }}" class="card-img-top"
+               style="object-fit:contain;width:100%;background:#fff;padding:12px">
+          <div class="card-footer text-muted small text-center">{{ caption }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="tab-pane fade" id="tab-forecast">
+
+    {% with forecast_images|first as img %}
+    {% if img %}
+    <div class="card shadow-sm mb-4">
+      <img src="{% static 'forecast/'|add:img.0 %}" alt="{{ img.1 }}" class="card-img-top"
+           style="object-fit:contain;width:100%;background:#fff;padding:12px">
+      <div class="card-footer text-muted small text-center">{{ img.1 }}</div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% if cv_headers %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold bg-light">
+        Качество модели — Walk-Forward Cross-Validation (тестовые годы: 2021–2023)
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm mb-0" style="font-size:.87rem">
+            <thead class="table-secondary">
+              <tr>
+                {% for h in cv_headers %}<th class="text-center">{{ h }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in cv_rows %}
+              <tr>
+                {% for cell in row %}
+                  {% if forloop.first %}
+                  <td class="fw-semibold">{{ cell }}</td>
+                  {% elif cell == "Да" %}
+                  <td class="text-center text-success fw-bold">{{ cell }}</td>
+                  {% elif cell == "Нет" %}
+                  <td class="text-center text-muted">{{ cell }}</td>
+                  {% else %}
+                  <td class="text-center">{{ cell }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer text-muted" style="font-size:.78rem">
+        Модель обучается на данных до года t и предсказывает год t+1. Прогноз 2025–2026 строится цепочкой: выход модели за год t становится лагом для года t+1.
+      </div>
+    </div>
+    {% endif %}
+
+    {% if validation_rows %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>Сравнение прогноза 2024 с реальными данными</span>
+        {% if validation_metrics %}
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="badge bg-primary">MAE: {{ validation_metrics.MAE }}</span>
+          <span class="badge bg-secondary">RMSE: {{ validation_metrics.RMSE }}</span>
+          <span class="badge bg-success">R²: {{ validation_metrics.R² }}</span>
+          <span class="badge bg-info text-dark">MAPE: {{ validation_metrics.MAPE }}%</span>
+          <span class="badge bg-light text-dark border">N регионов: {{ validation_metrics.N }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:380px;overflow-y:auto">
+          <table class="table table-bordered table-sm table-hover mb-0" style="font-size:.83rem">
+            <thead class="table-secondary" style="position:sticky;top:0">
+              <tr>
+                {% for h in validation_headers %}
+                <th class="text-center">{{ h }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in validation_rows %}
+              <tr>
+                {% for cell in row %}
+                  {% if forloop.first %}
+                  <td>{{ cell }}</td>
+                  {% else %}
+                  <td class="text-center">{{ cell }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer text-muted" style="font-size:.78rem">
+        Источник фактических данных: Портал правовой статистики Генеральной прокуратуры РФ (crimestat.ru).
+        Значения отсортированы по абсолютной ошибке (наибольшая — вверху).
+      </div>
+    </div>
+    {% endif %}
+
+    {# График 2: прогноз по регионам #}
+    {% if forecast_images|length > 1 %}
+    {% with forecast_images.1 as img %}
+    <div class="card shadow-sm mb-4">
+      <img src="{% static 'forecast/'|add:img.0 %}" alt="{{ img.1 }}" class="card-img-top"
+           style="object-fit:contain;width:100%;background:#fff;padding:12px">
+      <div class="card-footer text-muted small text-center">{{ img.1 }}</div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    {% if forecast_table_rows %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold bg-light">
+        Прогноз по регионам — базовый сценарий (доля подростковой преступности, %)
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:420px;overflow-y:auto">
+          <table class="table table-bordered table-sm table-hover mb-0" style="font-size:.82rem">
+            <thead class="table-secondary" style="position:sticky;top:0">
+              <tr>
+                {% for h in forecast_table_headers %}<th class="text-center">{{ h }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in forecast_table_rows %}
+              <tr>
+                {% for cell in row %}
+                  {% if forloop.first %}
+                  <td>{{ cell }}</td>
+                  {% else %}
+                  <td class="text-center">{{ cell }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}
